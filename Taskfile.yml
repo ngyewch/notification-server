@@ -1,0 +1,36 @@
+version: 3
+
+tasks:
+  preBuild:
+    cmds:
+      - go mod download
+      - go mod tidy
+
+  build:
+    desc: Build
+    cmds:
+      - goreleaser build --auto-snapshot --clean
+
+  build-single:
+    desc: Build (single)
+    cmds:
+      - goreleaser build --auto-snapshot --clean --single-target
+
+  test:
+    cmds:
+      - mail2go -s localhost -p 5555 -u bob@test.com -w bobspassword -f bob@test.com -t alice@test.com -h "My subject" -b "Hello, world!" -l none
+
+  dependencyUpdates:
+    desc: Show dependency updates
+    cmds:
+      - go list -u -m -json all | go-mod-outdated -update -direct
+
+  lint:
+    desc: Lint
+    cmds:
+      - golangci-lint run
+
+  mingo:
+    cmds:
+      - mise exec go@1.24.1 -- mise install 'go:github.com/bobg/mingo/cmd/mingo@0.13.0'
+      - mise exec 'go:github.com/bobg/mingo/cmd/mingo@0.13.0' -- mingo -tests -v
