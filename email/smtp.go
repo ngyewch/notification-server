@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
+	"golang.org/x/net/html/charset"
 	"io"
+	"mime"
+	"net/mail"
 )
 
 type SmtpAuth interface {
@@ -35,6 +38,10 @@ type SmtpSession struct {
 	usernamePasswordAuthenticator *UsernamePasswordAuthenticator
 	conn                          *smtp.Conn
 	username                      string
+	from                          *mail.Address
+	to                            *mail.Address
+	subject                       string
+	body                          string
 }
 
 func (session *SmtpSession) AuthMechanisms() []string {
@@ -67,30 +74,81 @@ func (session *SmtpSession) Auth(mech string) (sasl.Server, error) {
 }
 
 func (session *SmtpSession) Mail(from string, opts *smtp.MailOptions) error {
-	fmt.Println("**** Username:", session.username)
-	fmt.Printf("MAIL From: %s\n", from)
+	if session.username == "" {
+		return fmt.Errorf("not authenticated")
+	}
+	fromAddr, err := mail.ParseAddress(from)
+	if err != nil {
+		return err
+	}
+	if fromAddr.Address != session.username {
+		return fmt.Errorf("authentication mismatch")
+	}
+	session.from = fromAddr
 	return nil
 }
 
 func (session *SmtpSession) Rcpt(to string, opts *smtp.RcptOptions) error {
-	fmt.Printf("RCPT To: %s\n", to)
+	if session.username == "" {
+		return fmt.Errorf("not authenticated")
+	}
+	toAddr, err := mail.ParseAddress(to)
+	if err != nil {
+		return err
+	}
+	session.to = toAddr
 	return nil
 }
 
 func (session *SmtpSession) Data(r io.Reader) error {
-	b, err := io.ReadAll(r)
+	if session.username == "" {
+		return fmt.Errorf("not authenticated")
+	}
+	msg, err := mail.ReadMessage(r)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("DATA %s\n", string(b))
+	mediaType, contentTypeParams, err := mime.ParseMediaType(msg.Header.Get("Content-Type"))
+	if err != nil {
+		return err
+	}
+	if mediaType == "" {
+		mediaType = "text/plain"
+	}
+	if mediaType != "text/plain" {
+		return fmt.Errorf("unsupported media type: %s", mediaType)
+	}
+	charsetName := contentTypeParams["charset"]
+	if charsetName == "" {
+		charsetName = "US-ASCII"
+	}
+	cs, _ := charset.Lookup(charsetName)
+	if cs == nil {
+		return fmt.Errorf("unknown charset: %s", charsetName)
+	}
+
+	session.subject = msg.Header.Get("Subject")
+
+	bodyBytes, err := io.ReadAll(cs.NewDecoder().Reader(msg.Body))
+	if err != nil {
+		return err
+	}
+	session.body = string(bodyBytes)
+
+	fmt.Printf("Subject: %s\n", session.subject)
+	fmt.Println()
+	fmt.Println(session.body)
+
 	return nil
 }
 
 func (session *SmtpSession) Reset() {
-	fmt.Println("**** Reset")
+	session.to = nil
+	session.from = nil
+	session.subject = ""
+	session.body = ""
 }
 
 func (session *SmtpSession) Logout() error {
-	fmt.Println("**** Logout")
 	return nil
 }

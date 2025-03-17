@@ -9,16 +9,16 @@ tasks:
   build:
     desc: Build
     cmds:
-      - goreleaser build --auto-snapshot --clean
+      - goreleaser build --snapshot --auto-snapshot --clean
 
   build-single:
     desc: Build (single)
     cmds:
-      - goreleaser build --auto-snapshot --clean --single-target
+      - goreleaser build --snapshot --auto-snapshot --clean --single-target
 
   test:
     cmds:
-      - mail2go -s localhost -p 5555 -u bob@test.com -w bobspassword -f bob@test.com -t alice@test.com -h "My subject" -b "Hello, world!" -l none
+      - mail2go -s localhost -p 5555 -u bob@test.com -w bobspassword -f "Bob <bob@test.com>" -t alice@test.com -h "My subject" -b "Hello, world!" -l none
 
   dependencyUpdates:
     desc: Show dependency updates
