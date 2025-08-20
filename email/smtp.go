@@ -2,12 +2,13 @@ package email
 
 import (
 	"fmt"
-	"github.com/emersion/go-sasl"
-	"github.com/emersion/go-smtp"
-	"golang.org/x/net/html/charset"
 	"io"
 	"mime"
 	"net/mail"
+
+	"github.com/emersion/go-sasl"
+	"github.com/emersion/go-smtp"
+	"golang.org/x/net/html/charset"
 )
 
 type SmtpAuth interface {
